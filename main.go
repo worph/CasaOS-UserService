@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,9 +25,11 @@ import (
 	"github.com/IceWhaleTech/CasaOS-UserService/pkg/config"
 	"github.com/IceWhaleTech/CasaOS-UserService/pkg/sqlite"
 	"github.com/IceWhaleTech/CasaOS-UserService/pkg/utils/encryption"
+	"github.com/IceWhaleTech/CasaOS-UserService/pkg/utils/file"
 	"github.com/IceWhaleTech/CasaOS-UserService/pkg/utils/random"
 	"github.com/IceWhaleTech/CasaOS-UserService/route"
 	"github.com/IceWhaleTech/CasaOS-UserService/service"
+	model2 "github.com/IceWhaleTech/CasaOS-UserService/service/model"
 	"github.com/coreos/go-systemd/daemon"
 	"go.uber.org/zap"
 )
@@ -173,6 +176,16 @@ func main() {
 		time.Sleep(time.Second)
 	}
 
+	//if the system container "USER" evnv <user>:<pwd> then register the user
+	logger.Info("User created dsfdsfsd")
+	if os.Getenv("USER") != "" {
+		logger.Info("User created", zap.String("username", os.Getenv("USER")))
+		user := strings.Split(os.Getenv("USER"), ":")
+		if len(user) == 2 {
+			initUser(user[0], user[1])
+		}
+	}
+
 	s := &http.Server{
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second, // fix G112: Potential slowloris attack (see https://github.com/securego/gosec)
@@ -182,6 +195,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+}
+
+func initUser(username string, pwd string) {
+	user := model2.UserDBModel{}
+	user.Username = username
+	user.Password = encryption.GetMD5ByStr(pwd)
+	user.Role = "admin"
+
+	service.MyService.User().CreateUser(user)
+	file.MkDir(config.AppInfo.UserDataPath + "/" + strconv.Itoa(user.Id))
+	logger.Info("User created", zap.String("username", username))
 }
 
 func writeAddressFile(runtimePath string, filename string, address string) (string, error) {
