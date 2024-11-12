@@ -177,7 +177,6 @@ func main() {
 	}
 
 	//if the system container "USER" evnv <user>:<pwd> then register the user
-	logger.Info("User created dsfdsfsd")
 	if os.Getenv("USER") != "" {
 		logger.Info("User created", zap.String("username", os.Getenv("USER")))
 		user := strings.Split(os.Getenv("USER"), ":")
